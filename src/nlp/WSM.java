@@ -32,20 +32,20 @@ public class WSM {
 
     /**
      * Only public method.  Input sentence and get indexes of the relevant terms in the sentence.
-     * @param text
+     * @param textTokens
      * @return
      */
-    public List<String[]> getTuples(String text) throws IOException, JWNLException {
-        //Set<Integer> termsListSenseIds = readTermsListAndCreateSenseIdList("res/Keywords.xslx");
+    public List<String[]> getTuples(List<String> textTokens) throws IOException, JWNLException {
         Map<String, Term> expandedTermsMap = getExpandedTermsList("res/Keywords.xlsx");
-        //List<CoreLabel> sentence = posTagSentence(sentenceStr);
-        List<CoreLabel> textTokens = tokenizerFactory.getTokenizer(new StringReader(text)).tokenize();
+        //List<CoreLabel> textTokens = tokenizerFactory.getTokenizer(new StringReader(text)).tokenize();
 
         List<String[]> tuples = new ArrayList<>();
         boolean actionItemFlag = false;
         String lastActionItem="", midText="";
-        for (CoreLabel tokenCl : textTokens) {
-            String tokenTextLemma = lemmatizeTerm(tokenCl.originalText());
+//        for (CoreLabel tokenCl : textTokens) {
+//            String tokenTextLemma = lemmatizeTerm(tokenCl.originalText());
+        for (String token : textTokens) {
+            String tokenTextLemma = lemmatizeTerm(token);
             if (!expandedTermsMap.containsKey(tokenTextLemma)) {
                 if (actionItemFlag==true)   midText += tokenTextLemma + " ";
                 continue;
@@ -58,7 +58,7 @@ public class WSM {
                     lastActionItem = tokenTextLemma;
                     midText = "";
                 } else if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("datetime")) {
-                    tuples.add(new String[]{lastActionItem, midText, tokenTextLemma});
+                    tuples.add(new String[]{lastActionItem, midText.trim(), token});
                     actionItemFlag = false;
                     midText = "";
                 } else {
@@ -182,8 +182,8 @@ public class WSM {
             WSM wsm = new WSM();
             //List<Integer> ind = wsm.getTuples("Our acquisition led to know legal problems");
             //System.out.println(ind);
-            String text = "action action asdf time May";
-            List<String[]> y = wsm.getTuples(text);
+            String text = "action action developers asdf Bob time May";
+            List<String[]> y = wsm.getTuples(new ArrayList<>(Arrays.asList(text.split(" "))));
             for (String[] y1 : y) {
                 for (String y2 : y1)
                     System.out.print(y2 + " ");
