@@ -35,34 +35,38 @@ public class WSM {
      * @param text
      * @return
      */
-    public List<Integer> getIndexesOfRelevantTerms(String text) throws IOException, JWNLException {
+    public List<String[]> getTuples(String text) throws IOException, JWNLException {
         //Set<Integer> termsListSenseIds = readTermsListAndCreateSenseIdList("res/Keywords.xslx");
         Map<String, Term> expandedTermsMap = getExpandedTermsList("res/Keywords.xlsx");
         //List<CoreLabel> sentence = posTagSentence(sentenceStr);
         List<CoreLabel> textTokens = tokenizerFactory.getTokenizer(new StringReader(text)).tokenize();
 
+        List<String[]> tuples = new ArrayList<>();
         boolean actionItemFlag = false;
-        String lastActionItem;
+        String lastActionItem="", midText="";
         for (CoreLabel tokenCl : textTokens) {
             String tokenTextLemma = lemmatizeTerm(tokenCl.originalText());
-            if (!expandedTermsMap.containsKey(tokenTextLemma))  continue;
+            if (!expandedTermsMap.containsKey(tokenTextLemma)) {
+                if (actionItemFlag==true)   midText += tokenTextLemma + " ";
+                continue;
+            }
             if (actionItemFlag==false && expandedTermsMap.get(tokenTextLemma).getLabel().equals("action-item")) {
                 actionItemFlag = true;
                 lastActionItem = tokenTextLemma;
-            } else {
-                if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("action-item"))
+            } else if (actionItemFlag==true) {
+                if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("action-item")) {
                     lastActionItem = tokenTextLemma;
-                else if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("datetime")) {
-
+                    midText = "";
+                } else if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("datetime")) {
+                    tuples.add(new String[]{lastActionItem, midText, tokenTextLemma});
+                    actionItemFlag = false;
+                    midText = "";
+                } else {
+                    midText += tokenTextLemma + " ";
                 }
             }
-
-
-//            for (String sentenceTermSynonym : jwnlHelper.getSynsets(sentenceTerm.tag(), sentenceTerm.originalText()))
-//                if (expandedTermsList.contains(sentenceTermSynonym))
-//                    matchingTermsIndexes.add(i);
         }
-        return matchingTermsIndexes;
+        return tuples;
     }
 
     List<CoreLabel> posTagSentence(String sentence) {
@@ -137,7 +141,7 @@ public class WSM {
         //return expandedTermsList;
     }
 
-    public String lemmatizeTerm(String term) {
+    String lemmatizeTerm(String term) {
         Annotation document = new Annotation(term);
         pipeline.annotate(document);
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
@@ -176,8 +180,19 @@ public class WSM {
     public static void main(String[] args) {
         try {
             WSM wsm = new WSM();
-            List<Integer> ind = wsm.getIndexesOfRelevantTerms("Our acquisition led to know legal problems");
-            System.out.println(ind);
+            //List<Integer> ind = wsm.getTuples("Our acquisition led to know legal problems");
+            //System.out.println(ind);
+            String text = "action action asdf time May";
+            List<String[]> y = wsm.getTuples(text);
+            for (String[] y1 : y) {
+                for (String y2 : y1)
+                    System.out.print(y2 + " ");
+                System.out.println("");
+            }
+
+            //System.out.println(wsm.getTuples(text));
+            //wsm.getTuples()
+
             System.exit(0);
 
 
