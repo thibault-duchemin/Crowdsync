@@ -41,10 +41,22 @@ public class WSM {
         //List<CoreLabel> sentence = posTagSentence(sentenceStr);
         List<CoreLabel> textTokens = tokenizerFactory.getTokenizer(new StringReader(text)).tokenize();
 
+        boolean actionItemFlag = false;
+        String lastActionItem;
         for (CoreLabel tokenCl : textTokens) {
             String tokenTextLemma = lemmatizeTerm(tokenCl.originalText());
-            if (expandedTermsMap.containsKey(tokenTextLemma))
+            if (!expandedTermsMap.containsKey(tokenTextLemma))  continue;
+            if (actionItemFlag==false && expandedTermsMap.get(tokenTextLemma).getLabel().equals("action-item")) {
+                actionItemFlag = true;
+                lastActionItem = tokenTextLemma;
+            } else {
                 if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("action-item"))
+                    lastActionItem = tokenTextLemma;
+                else if (expandedTermsMap.get(tokenTextLemma).getLabel().equals("datetime")) {
+
+                }
+            }
+
 
 //            for (String sentenceTermSynonym : jwnlHelper.getSynsets(sentenceTerm.tag(), sentenceTerm.originalText()))
 //                if (expandedTermsList.contains(sentenceTermSynonym))
