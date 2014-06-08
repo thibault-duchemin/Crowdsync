@@ -1,5 +1,7 @@
 package nlp;
 
+import edu.stanford.nlp.ie.AbstractSequenceClassifier;
+import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -44,8 +46,9 @@ public class WSM {
         String lastActionItem="", midText="";
 //        for (CoreLabel tokenCl : textTokens) {
 //            String tokenTextLemma = lemmatizeTerm(tokenCl.originalText());
+        int i=0;
         for (String token : textTokens) {
-            String tokenTextLemma = lemmatizeTerm(token);
+            String tokenTextLemma = lemmatizeTerm(token).toLowerCase();
             if (!expandedTermsMap.containsKey(tokenTextLemma)) {
                 if (actionItemFlag==true)   midText += tokenTextLemma + " ";
                 continue;
@@ -65,6 +68,17 @@ public class WSM {
                     midText += tokenTextLemma + " ";
                 }
             }
+
+            if (expandedTermsMap.containsKey(tokenTextLemma) &&
+                    expandedTermsMap.get(tokenTextLemma).getLabel().equals("datetime")) {
+                for (int j = (i-5 < 0 ? 0 : i-5); j <= (i+5 >= textTokens.size()-1 ? textTokens.size()-2 : i+5); j++) {
+                    if (textTokens.get(j).equalsIgnoreCase("next") &&
+                            (textTokens.get(j+1).equalsIgnoreCase("meeting") ||
+                                    textTokens.get(j+1).equalsIgnoreCase("time")))
+                        tuples.add(new String[]{textTokens.get(j) + " " + textTokens.get(j+1), token});
+                }
+            }
+            i++;
         }
         return tuples;
     }
@@ -115,17 +129,19 @@ public class WSM {
         Iterator<Row> rowIterator = sheet.iterator();
         while (rowIterator.hasNext()) {
             Row row = rowIterator.next();
-            Cell keyword = row.getCell(0);
-            if (keyword.getStringCellValue().equals("Keyword")) continue;
-            Cell pos = row.getCell(1);
-            Cell label = row.getCell(2);
+            //Cell keyword = row.getCell(0);
+            String keyword = row.getCell(0).getStringCellValue().toLowerCase();
+            if (keyword.equalsIgnoreCase("Keyword")) continue;
+//            Cell pos = row.getCell(1);
+//            Cell label = row.getCell(2);
+            String pos = row.getCell(1).getStringCellValue().toLowerCase();
+            String label = row.getCell(2).getStringCellValue().toLowerCase();
             if (!map.containsKey(keyword))
-                map.put(keyword.getStringCellValue(),
-                        new Term(keyword.getStringCellValue(), label.getStringCellValue(), pos.getStringCellValue()));
-            String[] synonyms = jwnlHelper.getSynsets(pos.getStringCellValue(), keyword.getStringCellValue());
+                map.put(keyword, new Term(keyword, label, pos));
+            String[] synonyms = jwnlHelper.getSynsets(pos, keyword);
             for (String synonym : synonyms)
                 if (!map.containsKey(synonym))  // TODO: convert pos eg 'noun' to 'N' etc
-                    map.put(synonym, new Term(synonym, label.getStringCellValue(), pos.getStringCellValue()));
+                    map.put(synonym, new Term(synonym, label, pos));
         }
         file.close();
         return map;
@@ -179,10 +195,22 @@ public class WSM {
 
     public static void main(String[] args) {
         try {
+            String text = "action action developers asdf Bob time May twenty-first during the next meeting";
+
+            // Do NER on question
+            /*String serializedClassifier = "edu/stanford/nlp/models/ner/english.all.3class.distsim.crf.ser.gz";
+            AbstractSequenceClassifier<CoreLabel> classifier =
+                    CRFClassifier.getClassifierNoExceptions(serializedClassifier);
+            List<CoreLabel> queryTokensCL = classifier.classify(text).get(0);
+            for (CoreLabel coreLabel : queryTokensCL) {
+                coreLabel.setNER(coreLabel.get(CoreAnnotations.AnswerAnnotation.class));
+                System.out.println(coreLabel.originalText()+"\t"+coreLabel.get(CoreAnnotations.AnswerAnnotation.class));
+            }
+            System.exit(0);*/
+
             WSM wsm = new WSM();
             //List<Integer> ind = wsm.getTuples("Our acquisition led to know legal problems");
             //System.out.println(ind);
-            String text = "action action developers asdf Bob time May";
             List<String[]> y = wsm.getTuples(new ArrayList<>(Arrays.asList(text.split(" "))));
             for (String[] y1 : y) {
                 for (String y2 : y1)
